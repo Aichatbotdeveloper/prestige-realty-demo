@@ -1422,24 +1422,777 @@
     👋 Chat with <strong>Maya</strong>, our AI property assistant — available 24/7!
   </div>
 
-  <!-- ══════════════════════════════════════
-       VOICEFLOW CHATBOT EMBED
-  ══════════════════════════════════════ -->
-  <script type="text/javascript">
-    (function(d, t) {
-      var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
-      v.onload = function() {
-        window.voiceflow.chat.load({
-          verify: { projectID: '6a0e78ad33cfe6deb88276e0' },
-          url: 'https://general-runtime.voiceflow.com',
-          voice: { url: "https://runtime-api.voiceflow.com" }
-        });
-      }
-      v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs";
-      v.type = "text/javascript";
-      s.parentNode.insertBefore(v, s);
-    })(document, 'script');
-  </script>
+ 
+
+<!-- ══ MAYA CHATBOT WIDGET ══ -->
+<style>
+  /* ── Widget Container ── */
+  #maya-widget {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 9998;
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  /* ── Launcher Button ── */
+  #maya-launcher {
+    width: 60px;
+    height: 60px;
+    background: var(--gold);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 24px rgba(201,168,76,0.45);
+    transition: transform 0.3s, box-shadow 0.3s;
+    position: relative;
+  }
+
+  #maya-launcher:hover {
+    transform: scale(1.08);
+    box-shadow: 0 8px 32px rgba(201,168,76,0.55);
+  }
+
+  #maya-launcher svg { transition: opacity 0.2s; }
+
+  #maya-launcher .icon-close {
+    position: absolute;
+    opacity: 0;
+  }
+
+  #maya-widget.open #maya-launcher .icon-chat { opacity: 0; }
+  #maya-widget.open #maya-launcher .icon-close { opacity: 1; }
+
+  /* ── Chat Window ── */
+  #maya-box {
+    position: absolute;
+    bottom: 76px;
+    right: 0;
+    width: 370px;
+    background: #111111;
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+    display: none;
+    flex-direction: column;
+    max-height: 580px;
+    animation: chatSlideUp 0.35s ease;
+  }
+
+  #maya-widget.open #maya-box { display: flex; }
+
+  @keyframes chatSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Header */
+  #maya-head {
+    background: linear-gradient(135deg, #1a1600 0%, #2a2000 100%);
+    border-bottom: 1px solid rgba(201,168,76,0.2);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .maya-avatar {
+    width: 40px;
+    height: 40px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    color: #0A0A0A;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .maya-head-info { flex: 1; }
+
+  .maya-head-name {
+    font-size: 13px;
+    color: #F5F2EA;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+  }
+
+  .maya-head-status {
+    font-size: 10px;
+    color: #C9A84C;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .maya-head-status::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: #4CAF50;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Messages */
+  #maya-msgs {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(201,168,76,0.2) transparent;
+  }
+
+  #maya-msgs::-webkit-scrollbar { width: 4px; }
+  #maya-msgs::-webkit-scrollbar-track { background: transparent; }
+  #maya-msgs::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 2px; }
+
+  .maya-bubble {
+    max-width: 88%;
+    padding: 11px 15px;
+    font-size: 12.5px;
+    line-height: 1.65;
+    border-radius: 2px;
+    animation: bubblePop 0.25s ease;
+  }
+
+  @keyframes bubblePop {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .maya-bubble.agent {
+    background: #222222;
+    color: #D4D0C8;
+    align-self: flex-start;
+    border-left: 2px solid #C9A84C;
+  }
+
+  .maya-bubble.user {
+    background: #C9A84C;
+    color: #0A0A0A;
+    align-self: flex-end;
+    font-weight: 500;
+  }
+
+  /* Buttons */
+  .maya-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-self: flex-start;
+    max-width: 100%;
+    animation: bubblePop 0.25s ease;
+  }
+
+  .maya-btn {
+    background: transparent;
+    border: 1px solid rgba(201,168,76,0.5);
+    color: #C9A84C;
+    padding: 8px 14px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .maya-btn:hover {
+    background: #C9A84C;
+    color: #0A0A0A;
+    border-color: #C9A84C;
+  }
+
+  /* Typing indicator */
+  .maya-typing {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    padding: 12px 16px;
+    align-self: flex-start;
+    background: #222222;
+    border-left: 2px solid #C9A84C;
+    border-radius: 2px;
+    animation: bubblePop 0.25s ease;
+  }
+
+  .maya-typing span {
+    width: 6px;
+    height: 6px;
+    background: #C9A84C;
+    border-radius: 50%;
+    animation: typingDot 1.2s infinite;
+  }
+
+  .maya-typing span:nth-child(2) { animation-delay: 0.2s; }
+  .maya-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typingDot {
+    0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+    30% { opacity: 1; transform: scale(1.1); }
+  }
+
+  /* Input area */
+  #maya-foot {
+    padding: 12px 14px;
+    border-top: 1px solid rgba(201,168,76,0.12);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+    background: #0A0A0A;
+  }
+
+  #maya-input {
+    flex: 1;
+    background: #181818;
+    border: 1px solid rgba(201,168,76,0.15);
+    border-radius: 2px;
+    padding: 10px 13px;
+    font-size: 12px;
+    color: #D4D0C8;
+    font-family: 'Montserrat', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  #maya-input:focus { border-color: rgba(201,168,76,0.4); }
+  #maya-input::placeholder { color: #555; }
+
+  #maya-send {
+    width: 38px;
+    height: 38px;
+    background: #C9A84C;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+
+  #maya-send:hover { background: #E2C97E; }
+
+  /* Powered by */
+  .maya-powered {
+    text-align: center;
+    font-size: 9px;
+    color: #444;
+    letter-spacing: 0.12em;
+    padding-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  /* Unread badge */
+  #maya-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 18px;
+    height: 18px;
+    background: #C9A84C;
+    border-radius: 50%;
+    font-size: 10px;
+    color: #0A0A0A;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: badgePop 0.3s ease;
+  }
+
+  @keyframes badgePop {
+    from { transform: scale(0); }
+    to   { transform: scale(1); }
+  }
+
+  #maya-widget.open #maya-badge { display: none; }
+</style>
+
+<div id="maya-widget">
+  <div id="maya-box">
+    <div id="maya-head">
+      <div class="maya-avatar">M</div>
+      <div class="maya-head-info">
+        <div class="maya-head-name">Maya · Prestige Realty AI</div>
+        <div class="maya-head-status">Online — Available 24/7</div>
+      </div>
+    </div>
+    <div id="maya-msgs"></div>
+    <div id="maya-foot">
+      <input id="maya-input" type="text" placeholder="Type your message…" autocomplete="off" />
+      <button id="maya-send" aria-label="Send">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M13 1L1 7l5 1.5L7.5 13 13 1z" fill="#0A0A0A"/>
+        </svg>
+      </button>
+    </div>
+    <div class="maya-powered">Powered by AI · Prestige Realty</div>
+  </div>
+
+  <button id="maya-launcher" aria-label="Chat with Maya">
+    <svg class="icon-chat" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="2" stroke-linecap="round">
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+    </svg>
+    <svg class="icon-close" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+  <div id="maya-badge">1</div>
+</div>
+
+<script>
+(function() {
+
+  /* ══ DATA ══════════════════════════════════════════ */
+  const PROPERTIES = [
+    { name: "The Whitehaven Penthouse", loc: "Banana Island, Lagos", price: "₦2.4 Billion", beds: 5, baths: 6, sqm: 680, tag: "Featured" },
+    { name: "Serenity Villa", loc: "Old Ikoyi, Lagos", price: "₦850 Million", beds: 4, baths: 4, sqm: 420, tag: "New Listing" },
+    { name: "Meridian Court", loc: "Victoria Island, Lagos", price: "₦340 Million", beds: 3, baths: 3, sqm: 180, tag: "Investment" },
+    { name: "Maitama Grand Estate", loc: "Maitama, Abuja", price: "₦1.1 Billion", beds: 6, baths: 7, sqm: 850, tag: "" },
+    { name: "Lekki Phase 1 Duplex", loc: "Lekki Phase 1, Lagos", price: "₦520 Million", beds: 5, baths: 5, sqm: 360, tag: "Popular" },
+    { name: "GRA Luxury Home", loc: "GRA, Port Harcourt", price: "₦280 Million", beds: 4, baths: 4, sqm: 300, tag: "" }
+  ];
+
+  /* ══ STATE ══════════════════════════════════════════ */
+  let stage = "welcome";
+  let bookingData = {};
+  let realtorData = {};
+  let filteredProps = [];
+
+  /* ══ DOM REFS ══════════════════════════════════════ */
+  const widget   = document.getElementById("maya-widget");
+  const launcher = document.getElementById("maya-launcher");
+  const msgs     = document.getElementById("maya-msgs");
+  const input    = document.getElementById("maya-input");
+  const sendBtn  = document.getElementById("maya-send");
+  const badge    = document.getElementById("maya-badge");
+
+  /* ══ TOGGLE ══════════════════════════════════════════ */
+  launcher.addEventListener("click", () => {
+    widget.classList.toggle("open");
+    if (widget.classList.contains("open") && msgs.children.length === 0) {
+      setTimeout(() => greet(), 400);
+    }
+  });
+
+  /* ══ SEND ══════════════════════════════════════════ */
+  sendBtn.addEventListener("click", handleSend);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") handleSend(); });
+
+  function handleSend() {
+    const txt = input.value.trim();
+    if (!txt) return;
+    input.value = "";
+    addBubble(txt, "user");
+    processInput(txt);
+  }
+
+  /* ══ BUBBLE HELPERS ══════════════════════════════ */
+  function addBubble(text, who) {
+    const b = document.createElement("div");
+    b.className = "maya-bubble " + who;
+    b.innerHTML = text;
+    msgs.appendChild(b);
+    scrollBottom();
+    return b;
+  }
+
+  function addButtons(btns) {
+    const wrap = document.createElement("div");
+    wrap.className = "maya-btns";
+    btns.forEach(lbl => {
+      const b = document.createElement("button");
+      b.className = "maya-btn";
+      b.textContent = lbl;
+      b.addEventListener("click", () => {
+        wrap.remove();
+        addBubble(lbl, "user");
+        processInput(lbl);
+      });
+      wrap.appendChild(b);
+    });
+    msgs.appendChild(wrap);
+    scrollBottom();
+  }
+
+  function typing(ms) {
+    return new Promise(res => {
+      const t = document.createElement("div");
+      t.className = "maya-typing";
+      t.innerHTML = "<span></span><span></span><span></span>";
+      msgs.appendChild(t);
+      scrollBottom();
+      setTimeout(() => { t.remove(); res(); }, ms);
+    });
+  }
+
+  async function maya(text, btns, delay = 900) {
+    await typing(delay);
+    addBubble(text, "agent");
+    if (btns && btns.length) addButtons(btns);
+  }
+
+  function scrollBottom() {
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  /* ══ GREETING ══════════════════════════════════════ */
+  async function greet() {
+    stage = "welcome";
+    await maya(
+      "Hello and welcome to <strong>Prestige Realty</strong>. I am Maya, your personal property assistant. I am here to help you find your perfect property, connect you with a specialist, or arrange a viewing — all available around the clock.",
+      ["Browse Properties", "Talk to a Realtor", "Schedule a Viewing", "About Prestige Realty"],
+      600
+    );
+  }
+
+  /* ══ MAIN ROUTER ══════════════════════════════════ */
+  async function processInput(txt) {
+    const t = txt.toLowerCase();
+
+    /* ── Top-level menu ── */
+    if (t.includes("browse propert") || t.includes("view propert") || t.includes("see propert")) {
+      await browseProperties(); return;
+    }
+    if (t.includes("talk to") || t.includes("speak to") || t.includes("contact realtor") || t.includes("realtor")) {
+      await startRealtor(); return;
+    }
+    if (t.includes("schedule") || t.includes("viewing") || t.includes("book a view")) {
+      await startViewing(); return;
+    }
+    if (t.includes("about prestige") || t.includes("who are you") || t.includes("about the") || t.includes("tell me about")) {
+      await aboutUs(); return;
+    }
+    if (t.includes("main menu") || t.includes("back") || t.includes("start over") || t.includes("home")) {
+      stage = "welcome";
+      await maya("Of course. How else may I assist you today?",
+        ["Browse Properties", "Talk to a Realtor", "Schedule a Viewing", "About Prestige Realty"]); return;
+    }
+
+    /* ── Stage-specific routing ── */
+    switch (stage) {
+      case "browse":       await handleBrowse(txt); break;
+      case "filter_beds":  await handleFilterBeds(txt); break;
+      case "filter_loc":   await handleFilterLoc(txt); break;
+      case "prop_detail":  await handlePropDetail(txt); break;
+      case "realtor_name": await handleRealtorName(txt); break;
+      case "realtor_phone":await handleRealtorPhone(txt); break;
+      case "realtor_email":await handleRealtorEmail(txt); break;
+      case "realtor_type": await handleRealtorType(txt); break;
+      case "realtor_done": await handleRealtorDone(txt); break;
+      case "view_prop":    await handleViewProp(txt); break;
+      case "view_date":    await handleViewDate(txt); break;
+      case "view_time":    await handleViewTime(txt); break;
+      case "view_name":    await handleViewName(txt); break;
+      case "view_phone":   await handleViewPhone(txt); break;
+      case "view_done":    await handleViewDone(txt); break;
+      default:             await handleFallback(txt); break;
+    }
+  }
+
+  /* ══ BROWSE PROPERTIES ══════════════════════════ */
+  async function browseProperties() {
+    stage = "browse";
+    await maya(
+      "Excellent. We have a curated selection of premium properties across Lagos, Abuja and Port Harcourt. How would you like to narrow your search?",
+      ["All Available Properties", "By Location", "By Bedroom Count", "Investment Properties", "Back to Menu"]
+    );
+  }
+
+  async function handleBrowse(txt) {
+    const t = txt.toLowerCase();
+    if (t.includes("all available") || t.includes("show all") || t.includes("everything")) {
+      await showAllProperties(); return;
+    }
+    if (t.includes("by location") || t.includes("location")) {
+      stage = "filter_loc";
+      await maya("Which area are you interested in?",
+        ["Lagos Island / Ikoyi", "Banana Island", "Victoria Island", "Lekki / Ajah", "Abuja", "Port Harcourt", "Back"]); return;
+    }
+    if (t.includes("bedroom") || t.includes("bed")) {
+      stage = "filter_beds";
+      await maya("How many bedrooms are you looking for?",
+        ["3 Bedrooms", "4 Bedrooms", "5 Bedrooms", "6+ Bedrooms", "Back"]); return;
+    }
+    if (t.includes("investment")) {
+      filteredProps = PROPERTIES.filter(p => p.tag === "Investment" || p.loc.includes("Victoria"));
+      await showFilteredProperties("investment properties"); return;
+    }
+    await handleFallback(txt);
+  }
+
+  async function handleFilterLoc(txt) {
+    const t = txt.toLowerCase();
+    let keyword = "";
+    if (t.includes("ikoyi") || t.includes("lagos island")) keyword = "Ikoyi";
+    else if (t.includes("banana")) keyword = "Banana Island";
+    else if (t.includes("victoria")) keyword = "Victoria Island";
+    else if (t.includes("lekki")) keyword = "Lekki";
+    else if (t.includes("abuja")) keyword = "Abuja";
+    else if (t.includes("port harcourt") || t.includes("ph")) keyword = "Port Harcourt";
+    else if (t.includes("back")) { stage = "browse"; await browseProperties(); return; }
+    else { await maya("I did not quite catch that. Please select one of the areas below.", null); addButtons(["Lagos Island / Ikoyi","Banana Island","Victoria Island","Lekki / Ajah","Abuja","Port Harcourt","Back"]); return; }
+
+    filteredProps = PROPERTIES.filter(p => p.loc.toLowerCase().includes(keyword.toLowerCase()));
+    if (filteredProps.length === 0) {
+      await maya(`We do not currently have listed properties in <strong>${keyword}</strong>, but new listings arrive frequently. Would you like me to connect you with a realtor who specialises in that area?`,
+        ["Yes, connect me with a Realtor", "Show All Properties", "Back to Menu"]); return;
+    }
+    await showFilteredProperties(`properties in ${keyword}`);
+  }
+
+  async function handleFilterBeds(txt) {
+    const t = txt.toLowerCase();
+    let min = 0;
+    if (t.includes("3")) min = 3;
+    else if (t.includes("4")) min = 4;
+    else if (t.includes("5")) min = 5;
+    else if (t.includes("6")) min = 6;
+    else if (t.includes("back")) { stage = "browse"; await browseProperties(); return; }
+    else { await maya("Please select a bedroom count from the options.", null); addButtons(["3 Bedrooms","4 Bedrooms","5 Bedrooms","6+ Bedrooms","Back"]); return; }
+
+    filteredProps = PROPERTIES.filter(p => p.beds >= min);
+    await showFilteredProperties(`${min}+ bedroom properties`);
+  }
+
+  async function showAllProperties() {
+    filteredProps = [...PROPERTIES];
+    stage = "prop_detail";
+    let html = "Here is our full portfolio of available properties:<br><br>";
+    PROPERTIES.forEach((p, i) => {
+      html += `<strong>${i+1}. ${p.name}</strong><br>`;
+      html += `${p.loc} &nbsp;|&nbsp; ${p.price}<br>`;
+      html += `${p.beds} bed · ${p.baths} bath · ${p.sqm} sqm`;
+      if (p.tag) html += ` &nbsp;<span style="color:#C9A84C;font-size:10px;">[${p.tag}]</span>`;
+      html += "<br><br>";
+    });
+    await maya(html, ["Tell me more about #1", "Tell me more about #2", "Tell me more about #3", "Schedule a Viewing", "Talk to a Realtor", "Back to Menu"]);
+  }
+
+  async function showFilteredProperties(label) {
+    stage = "prop_detail";
+    if (filteredProps.length === 0) {
+      await maya("No properties matched that filter. Would you like to see all available properties?", ["Show All Properties", "Back to Menu"]); return;
+    }
+    let html = `Here are our available <strong>${label}</strong>:<br><br>`;
+    filteredProps.forEach((p, i) => {
+      html += `<strong>${i+1}. ${p.name}</strong><br>`;
+      html += `${p.loc} &nbsp;|&nbsp; ${p.price}<br>`;
+      html += `${p.beds} bed · ${p.baths} bath · ${p.sqm} sqm`;
+      if (p.tag) html += ` &nbsp;<span style="color:#C9A84C;font-size:10px;">[${p.tag}]</span>`;
+      html += "<br><br>";
+    });
+    const btns = filteredProps.map((p, i) => `Details on #${i+1}`);
+    btns.push("Schedule a Viewing", "Back to Menu");
+    await maya(html, btns);
+  }
+
+  async function handlePropDetail(txt) {
+    const t = txt.toLowerCase();
+    const match = t.match(/#(\d)/);
+    const idx = match ? parseInt(match[1]) - 1 : -1;
+    const src = filteredProps.length ? filteredProps : PROPERTIES;
+
+    if (t.includes("schedule") || t.includes("viewing")) { await startViewing(); return; }
+    if (t.includes("realtor")) { await startRealtor(); return; }
+    if (t.includes("back")) { stage = "browse"; await browseProperties(); return; }
+
+    if (idx >= 0 && idx < src.length) {
+      const p = src[idx];
+      await maya(
+        `<strong>${p.name}</strong><br>${p.loc}<br><br>` +
+        `Price: <strong style="color:#C9A84C">${p.price}</strong><br>` +
+        `Bedrooms: ${p.beds} &nbsp;|&nbsp; Bathrooms: ${p.baths}<br>` +
+        `Floor Area: ${p.sqm} sqm<br><br>` +
+        `This is one of our most sought-after properties in ${p.loc.split(",")[0]}. ` +
+        `Our specialist realtors can arrange a private viewing at your convenience.`,
+        ["Schedule a Viewing", "Talk to a Realtor", "Browse More Properties", "Back to Menu"]
+      ); return;
+    }
+    await handleFallback(txt);
+  }
+
+  /* ══ TALK TO A REALTOR ══════════════════════════ */
+  async function startRealtor() {
+    stage = "realtor_name";
+    realtorData = {};
+    await maya(
+      "I would be delighted to connect you with one of our specialist realtors. They are available Monday to Saturday, 8am to 7pm. To match you with the right person, may I start with your full name?"
+    );
+  }
+
+  async function handleRealtorName(txt) {
+    realtorData.name = txt;
+    stage = "realtor_phone";
+    await maya(`Thank you, ${txt.split(" ")[0]}. What is the best phone number to reach you?`);
+  }
+
+  async function handleRealtorPhone(txt) {
+    realtorData.phone = txt;
+    stage = "realtor_email";
+    await maya("And your email address, so we can send over property brochures?");
+  }
+
+  async function handleRealtorEmail(txt) {
+    realtorData.email = txt;
+    stage = "realtor_type";
+    await maya("What type of property are you looking for?",
+      ["Luxury Residential", "Investment Property", "Commercial Space", "Land / Development", "Not Sure Yet"]);
+  }
+
+  async function handleRealtorType(txt) {
+    realtorData.type = txt;
+    stage = "realtor_done";
+    await maya(
+      `Thank you for that information. Here is a summary of your request:<br><br>` +
+      `Name: <strong>${realtorData.name}</strong><br>` +
+      `Phone: <strong>${realtorData.phone}</strong><br>` +
+      `Email: <strong>${realtorData.email}</strong><br>` +
+      `Interest: <strong>${realtorData.type}</strong><br><br>` +
+      `One of our senior realtors will contact you within <strong>2 business hours</strong>. ` +
+      `All communications are strictly confidential. Is there anything else I can assist you with?`,
+      ["Browse Properties", "Schedule a Viewing", "Back to Menu", "That is all, thank you"]
+    );
+  }
+
+  async function handleRealtorDone(txt) {
+    const t = txt.toLowerCase();
+    if (t.includes("browse")) { await browseProperties(); return; }
+    if (t.includes("schedule") || t.includes("viewing")) { await startViewing(); return; }
+    if (t.includes("back") || t.includes("menu")) { stage = "welcome"; await maya("How else may I assist you?", ["Browse Properties","Talk to a Realtor","Schedule a Viewing","About Prestige Realty"]); return; }
+    await maya("You are most welcome. A Prestige Realty specialist will be in touch very shortly. Have a wonderful day.", [], 600);
+    stage = "welcome";
+  }
+
+  /* ══ SCHEDULE A VIEWING ══════════════════════════ */
+  async function startViewing() {
+    stage = "view_prop";
+    bookingData = {};
+    await maya(
+      "Excellent. I will arrange a private viewing for you. We have properties available across Lagos, Abuja and Port Harcourt. Which property or area are you interested in viewing?"
+    );
+  }
+
+  async function handleViewProp(txt) {
+    bookingData.property = txt;
+    stage = "view_date";
+    await maya(`A viewing for <strong>${txt}</strong> — noted. What date works best for you? Our realtors are available Monday to Saturday.`);
+  }
+
+  async function handleViewDate(txt) {
+    bookingData.date = txt;
+    stage = "view_time";
+    await maya(`${txt} — perfect. What time would you prefer?`,
+      ["9:00 AM", "11:00 AM", "1:00 PM", "3:00 PM", "5:00 PM"]);
+  }
+
+  async function handleViewTime(txt) {
+    bookingData.time = txt;
+    stage = "view_name";
+    await maya(`${txt} is confirmed as your preferred time. May I have your full name?`);
+  }
+
+  async function handleViewName(txt) {
+    bookingData.clientName = txt;
+    stage = "view_phone";
+    await maya(`Thank you, ${txt.split(" ")[0]}. And your phone number so our realtor can confirm the appointment?`);
+  }
+
+  async function handleViewPhone(txt) {
+    bookingData.phone = txt;
+    stage = "view_done";
+    await maya(
+      `Your viewing has been scheduled. Here is your confirmation:<br><br>` +
+      `Property: <strong>${bookingData.property}</strong><br>` +
+      `Date: <strong>${bookingData.date}</strong><br>` +
+      `Time: <strong>${bookingData.time}</strong><br>` +
+      `Name: <strong>${bookingData.clientName}</strong><br>` +
+      `Contact: <strong>${bookingData.phone}</strong><br><br>` +
+      `A confirmation message will be sent to you shortly. Our realtor will arrive at the property 10 minutes before your scheduled time. Is there anything else I can help you with?`,
+      ["Browse More Properties", "Talk to a Realtor", "Back to Menu", "That is all, thank you"]
+    );
+  }
+
+  async function handleViewDone(txt) {
+    const t = txt.toLowerCase();
+    if (t.includes("browse")) { await browseProperties(); return; }
+    if (t.includes("realtor")) { await startRealtor(); return; }
+    if (t.includes("back") || t.includes("menu")) { stage = "welcome"; await maya("How else may I assist you?", ["Browse Properties","Talk to a Realtor","Schedule a Viewing","About Prestige Realty"]); return; }
+    await maya("Wonderful. We look forward to welcoming you. Have a fantastic day.", [], 600);
+    stage = "welcome";
+  }
+
+  /* ══ ABOUT US ══════════════════════════════════ */
+  async function aboutUs() {
+    stage = "welcome";
+    await maya(
+      `<strong>Prestige Realty</strong> has been Nigeria's foremost luxury real estate agency since 2004. ` +
+      `With over <strong>850 properties sold</strong> and more than <strong>₦120 billion</strong> in total sales value, ` +
+      `we are the trusted partner for discerning buyers, sellers and investors across Lagos, Abuja and Port Harcourt.<br><br>` +
+      `Our team of specialist realtors brings unmatched market knowledge, discretion and a genuine commitment to delivering extraordinary results for every client we serve.`,
+      ["Browse Properties", "Talk to a Realtor", "Schedule a Viewing", "Back to Menu"]
+    );
+  }
+
+  /* ══ FALLBACK ══════════════════════════════════ */
+  async function handleFallback(txt) {
+    const t = txt.toLowerCase();
+    if (t.includes("price") || t.includes("cost") || t.includes("how much")) {
+      await maya("Our current portfolio ranges from <strong>₦280 Million</strong> to <strong>₦2.4 Billion</strong>. Would you like to browse by price range or see all available listings?",
+        ["Browse All Properties", "Talk to a Realtor", "Back to Menu"]); return;
+    }
+    if (t.includes("location") || t.includes("where") || t.includes("area")) {
+      await maya("We have properties in <strong>Banana Island</strong>, <strong>Old Ikoyi</strong>, <strong>Victoria Island</strong>, <strong>Lekki Phase 1</strong>, <strong>Maitama Abuja</strong> and <strong>GRA Port Harcourt</strong>. Which area interests you most?",
+        ["Browse by Location", "Show All Properties", "Back to Menu"]); return;
+    }
+    if (t.includes("contact") || t.includes("phone") || t.includes("email") || t.includes("office")) {
+      await maya("You can reach us through any of the following:<br><br>Phone: <strong>+234 801 234 5678</strong><br>Email: <strong>hello@prestigerealty.ng</strong><br>Office: <strong>15 Adeola Odeku Street, Victoria Island, Lagos</strong><br><br>Our team is available Monday to Saturday, 8am to 7pm.",
+        ["Talk to a Realtor", "Schedule a Viewing", "Back to Menu"]); return;
+    }
+    if (t.includes("thank") || t.includes("bye") || t.includes("goodbye") || t.includes("that is all")) {
+      await maya("It has been a pleasure assisting you. Prestige Realty looks forward to helping you find your perfect property. Have a wonderful day.", [], 600);
+      stage = "welcome"; return;
+    }
+    await maya(
+      "I want to make sure I assist you as well as possible. Could you tell me a little more, or choose one of the options below?",
+      ["Browse Properties", "Talk to a Realtor", "Schedule a Viewing", "About Prestige Realty"]
+    );
+  }
+
+  /* ══ SCROLL REVEAL ══════════════════════════════ */
+  const revealEls = document.querySelectorAll('.reveal');
+  const revealObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); revealObs.unobserve(e.target); }
+    });
+  }, { threshold: 0.1 });
+  revealEls.forEach(r => revealObs.observe(r));
+
+  /* Dismiss nudge after 8s */
+  setTimeout(() => {
+    const nudge = document.getElementById('chatNudge');
+    if (nudge) { nudge.style.opacity = '0'; nudge.style.transition = 'opacity 0.5s'; setTimeout(() => nudge.remove(), 500); }
+  }, 8000);
+
+})();
+</script>
 
   <!-- ══ SCROLL REVEAL ══ -->
   <script>
